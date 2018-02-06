@@ -11,8 +11,6 @@ import numpy as np
 import pandas as pd
 import re
 
-
-
 #we care about seeing which is the oldest i765 form ID we can find (oldest form that is showing form ID)
 
 #check if URL has i765
@@ -23,7 +21,13 @@ def isValid(id):
     url = "http://egov.uscis.gov/casestatus/mycasestatus.do?appReceiptNum=" + id
 
     #pull url
-    response = requests.get(url)
+    try:
+        #break this for testing (change url to urrl)
+        response = requests.get(url)
+    except:
+        raise Exception("URL Requests Error")
+
+
     soup = BeautifulSoup(response.content, 'lxml')
     body = soup.find_all("div", class_="rows text-center");
 
@@ -61,7 +65,13 @@ def genIDs():
         if(index%1000==0):
             print ("We at dis index fam: " + str(index))
         current_id = start+str(index)
-        result = isValid(current_id)
+        try:
+            result = isValid(current_id)
+        except Exception as e:
+            genIDs_err(start, index, ids, status, date)
+            print(e)
+            break
+
         if(result != (0,0) ):
             ids.append(current_id)
             status.append(result[0])
@@ -73,6 +83,16 @@ def genIDs():
     date = np.array(date)
     dataset = pd.DataFrame({'ids': ids, 'status': status, 'date':date}, columns=['IDS', 'STATUS', 'DATE'])
     dataset.to_csv("deportations.csv")
+
+def genIDs_err(start, index, ids, status, date):
+    #decrement index and write to csv
+    ids = np.array(ids)
+    status = np.array(status)
+    date = np.array(date)
+    dataset = pd.DataFrame({'ids': ids, 'status': status, 'date':date}, columns=['IDS', 'STATUS', 'DATE'])
+    dataset.to_csv("deportations_err_"+"index_"+str(index)+".csv")
+    print("Error at Index " + str(index)+" Stored")
+
 
 
 def main():
